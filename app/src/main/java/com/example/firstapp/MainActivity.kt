@@ -49,6 +49,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.firstapp.ui.quran.QuranScreen
+import com.example.firstapp.GoalsScreen
 import com.example.firstapp.ui.theme.FirstAppTheme
 
 class MainActivity : ComponentActivity() {
@@ -241,19 +242,6 @@ fun ActivityScreen() {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(text = "Activity Screen")
-        }
-    }
-}
-
-@Composable
-fun GoalsScreen() {
-    Surface(modifier = Modifier.fillMaxSize(), color = Color.White) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(text = "Goals Screen")
         }
     }
 }
