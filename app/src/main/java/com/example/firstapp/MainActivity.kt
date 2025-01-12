@@ -1,8 +1,13 @@
 package com.example.firstapp
 
+import android.Manifest
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
@@ -21,21 +26,30 @@ import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.PagerSnapDistance
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
@@ -44,26 +58,41 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.firstapp.ui.quran.QuranScreen
-import com.example.firstapp.GoalsScreen
 import com.example.firstapp.ui.theme.FirstAppTheme
+import kotlinx.coroutines.launch
+
+// Create a CompositionLocal to hold the dark theme state
+val LocalIsDarkTheme = staticCompositionLocalOf { mutableStateOf(false) }
 
 class MainActivity : ComponentActivity() {
+    private lateinit var locationHelper: LocationHelper
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        locationHelper = LocationHelper(this)
         setContent {
-            FirstAppTheme {
-                // A surface container using the 'background' color from the theme
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    val navController = rememberNavController()
-                    MainScreenWithBottomNavigation(navController)
+            // Get the dark theme state from SharedPreferences
+            val isDarkThemeEnabled = remember { mutableStateOf(false) }
+            val sharedPreferences = getSharedPreferences("settings", Context.MODE_PRIVATE)
+            isDarkThemeEnabled.value = sharedPreferences.getBoolean("isDarkThemeEnabled", false)
+
+            // Provide the dark theme state to the composition
+            CompositionLocalProvider(LocalIsDarkTheme provides isDarkThemeEnabled) {
+                FirstAppTheme(darkTheme = isDarkThemeEnabled.value) {
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        color = MaterialTheme.colorScheme.background
+                    ) {
+                        val navController = rememberNavController()
+                        MainScreenWithBottomNavigation(navController, locationHelper)
+                    }
                 }
             }
         }
@@ -72,9 +101,94 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainScreenWithBottomNavigation(navController: NavHostController) {
+fun MainScreenWithBottomNavigation(
+    navController: NavHostController,
+    locationHelper: LocationHelper
+) {
+    var currentCity by remember { mutableStateOf("Your City") }
+    val coroutineScope = rememberCoroutineScope()
+    val locationPermissions = arrayOf(
+        Manifest.permission.ACCESS_FINE_LOCATION,
+        Manifest.permission.ACCESS_COARSE_LOCATION
+    )
+    var permissionsGranted by remember { mutableStateOf(false) }
+    val launcher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        permissionsGranted = permissions.values.all { it }
+    }
+
+    LaunchedEffect(key1 = true) {
+        launcher.launch(locationPermissions)
+    }
+
+    // Settings State
+    var isDarkThemeEnabled by remember { mutableStateOf(false) }
+    var isAutoLocationEnabled by remember { mutableStateOf(false) }
+    val sharedPreferences = LocalContext.current.getSharedPreferences("settings", Context.MODE_PRIVATE)
+    isAutoLocationEnabled = sharedPreferences.getBoolean("isAutoLocationEnabled", false)
+
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+
+    // Get the dark theme state from the CompositionLocal
+    val isDarkTheme = LocalIsDarkTheme.current
+
+    // Update the isDarkThemeEnabled state when the CompositionLocal changes
+    LaunchedEffect(isDarkTheme.value) {
+        isDarkThemeEnabled = isDarkTheme.value
+    }
+    LaunchedEffect(isAutoLocationEnabled) {
+        if (isAutoLocationEnabled) {
+            val city = locationHelper.getCurrentCity()
+            city?.let {
+                currentCity = it
+            }
+        }
+    }
+
     Scaffold(
-        bottomBar = { BottomNavigationBar(navController) }
+        topBar = {
+            Toolbar(
+                title = if (currentRoute == "settings") "Settings" else currentCity,
+                onTitleClick = {
+                    if (!isAutoLocationEnabled) {
+                        navController.navigate("city_selection")
+                    } else {
+                        coroutineScope.launch {
+                            val city = locationHelper.getCurrentCity()
+                            city?.let {
+                                currentCity = it
+                            }
+                        }
+                    }
+                },
+                navigationIcon = {
+                    if (currentRoute == "settings" || currentRoute == "city_selection") {
+                        IconButton(onClick = { navController.popBackStack() }) {
+                            Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
+                        }
+                    } else {
+                        PolicyButton(onClick = { /* Handle policy click */ })
+                    }
+                },
+                actions = {
+                    if (currentRoute != "settings" && currentRoute != "city_selection") {
+                        IconButton(onClick = { navController.navigate("settings") }) {
+                            Icon(
+                                imageVector = Icons.Filled.Settings,
+                                contentDescription = "Settings"
+                            )
+                        }
+                    }
+                }
+            )
+        },
+        bottomBar = {
+            if (currentRoute != "settings" && currentRoute != "city_selection") {
+                BottomNavigationBar(navController)
+            }
+        }
     ) { innerPadding ->
         NavHost(
             navController = navController,
@@ -91,6 +205,24 @@ fun MainScreenWithBottomNavigation(navController: NavHostController) {
             composable("page_4") { NewPage(pageNumber = 4) }
             composable("compass_page") { CompassScreen() }
             composable("quran_page") { QuranScreen() }
+            composable("settings") {
+                SettingsScreen(
+                    isDarkThemeEnabled = isDarkThemeEnabled,
+                    onDarkThemeChange = {
+                        isDarkThemeEnabled = it
+                        isDarkTheme.value = it
+                    },
+                    isAutoLocationEnabled = isAutoLocationEnabled,
+                    onAutoLocationChange = {
+                        isAutoLocationEnabled = it
+                    }
+                )
+            }
+            composable("city_selection") {
+                CitySelectionScreen(navController = navController) { selectedCity ->
+                    currentCity = selectedCity
+                }
+            }
         }
     }
 }

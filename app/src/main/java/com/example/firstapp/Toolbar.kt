@@ -1,39 +1,44 @@
 package com.example.firstapp
 
-import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Toolbar(
-    modifier: Modifier = Modifier,
     title: String,
-    actions: @Composable RowScope.() -> Unit = {}
+    onTitleClick: () -> Unit = {},
+    navigationIcon: @Composable () -> Unit = {},
+    actions: @Composable () -> Unit = {}
 ) {
-    CenterAlignedTopAppBar(
-        modifier = modifier,
-        title = { Text(text = title) },
-        actions = actions,
-        colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer,
-            titleContentColor = MaterialTheme.colorScheme.primary
-        )
+    TopAppBar(
+        title = {
+            Text(
+                text = title,
+                modifier = Modifier.clickable(onClick = onTitleClick)
+            )
+        },
+        navigationIcon = navigationIcon,
+        actions = {
+            actions()
+        }
     )
 }
 
 @Composable
-fun ToolbarActions() {
-    IconButton(onClick = { /* Handle settings click */ }) {
-        Icon(Icons.Filled.Settings, contentDescription = "Settings")
+fun PolicyButton(onClick: () -> Unit) {
+    IconButton(onClick = onClick) {
+        Icon(
+            imageVector = Icons.Filled.ArrowBack,
+            contentDescription = "Policy"
+        )
     }
 }

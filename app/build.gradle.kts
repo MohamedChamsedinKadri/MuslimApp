@@ -63,6 +63,8 @@ android {
         implementation("androidx.compose.foundation:foundation:1.7.6")
         implementation("androidx.compose.foundation:foundation-layout:1.7.6")
 
+        implementation("com.google.android.libraries.places:places:3.3.0")
+
         // Other dependencies
         implementation(libs.androidx.core.ktx)
         implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -80,3 +82,7 @@ android {
         debugImplementation(libs.androidx.ui.tooling)
         debugImplementation(libs.androidx.ui.test.manifest)
     }}
+dependencies {
+    implementation(libs.androidx.appcompat)
+    implementation(libs.play.services.location)
+}
