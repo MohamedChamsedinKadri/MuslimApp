@@ -58,6 +58,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -67,6 +68,15 @@ import androidx.navigation.compose.rememberNavController
 import com.example.firstapp.ui.quran.QuranScreen
 import com.example.firstapp.ui.theme.FirstAppTheme
 import kotlinx.coroutines.launch
+import org.osmdroid.config.Configuration
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.util.GeoPoint
+import org.osmdroid.views.MapView
+import org.osmdroid.views.overlay.Marker
+import org.osmdroid.views.overlay.compass.CompassOverlay
+import org.osmdroid.views.overlay.compass.InternalCompassOrientationProvider
+import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider
+import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
 
 // Create a CompositionLocal to hold the dark theme state
 val LocalIsDarkTheme = staticCompositionLocalOf { mutableStateOf(false) }
@@ -76,6 +86,13 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Initialize OSMDroid configuration
+        Configuration.getInstance().load(
+            applicationContext,
+            getSharedPreferences("osm_prefs", Context.MODE_PRIVATE)
+        )
+
         locationHelper = LocationHelper(this)
         setContent {
             // Get the dark theme state from SharedPreferences
@@ -219,7 +236,7 @@ fun MainScreenWithBottomNavigation(
                 )
             }
             composable("city_selection") {
-                CitySelectionScreen(navController = navController) { selectedCity ->
+                OpenStreetMapScreen(navController = navController) { selectedCity ->
                     currentCity = selectedCity
                 }
             }
@@ -365,6 +382,7 @@ fun CompassScreen() {
         }
     }
 }
+
 @Composable
 fun ActivityScreen() {
     Surface(modifier = Modifier.fillMaxSize(), color = Color.White) {

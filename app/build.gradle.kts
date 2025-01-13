@@ -8,10 +8,7 @@ android {
     namespace = "com.example.firstapp"
     compileSdk = 35
 
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.1"
-
-        defaultConfig {
+    defaultConfig {
         applicationId = "com.example.firstapp"
         minSdk = 29
         targetSdk = 34
@@ -40,8 +37,16 @@ android {
     buildFeatures {
         compose = true
     }
-}
+    composeOptions {
+        kotlinCompilerExtensionVersion = "1.5.1"
+    }
     dependencies {
+        // OSMDroid for OpenStreetMap
+        implementation("org.osmdroid:osmdroid-android:6.1.16")
+
+        // Optional: For additional features like markers, overlays, etc.
+        implementation("org.osmdroid:osmdroid-mapsforge:6.1.16")
+        implementation("org.osmdroid:osmdroid-geopackage:6.1.16")
         // Retrofit
         implementation("com.squareup.retrofit2:retrofit:2.9.0")
         implementation("com.squareup.retrofit2:converter-gson:2.9.0")
@@ -81,8 +86,7 @@ android {
         androidTestImplementation(libs.androidx.ui.test.junit4)
         debugImplementation(libs.androidx.ui.tooling)
         debugImplementation(libs.androidx.ui.test.manifest)
-    }}
-dependencies {
-    implementation(libs.androidx.appcompat)
-    implementation(libs.play.services.location)
+        implementation(libs.androidx.appcompat)
+        implementation(libs.play.services.location)
+    }
 }
