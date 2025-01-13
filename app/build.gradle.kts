@@ -45,8 +45,8 @@ android {
         implementation("org.osmdroid:osmdroid-android:6.1.16")
 
         // Optional: For additional features like markers, overlays, etc.
-        implementation("org.osmdroid:osmdroid-mapsforge:6.1.16")
-        implementation("org.osmdroid:osmdroid-geopackage:6.1.16")
+        //implementation("org.osmdroid:osmdroid-mapsforge:6.1.16") // Remove if not needed
+        //implementation("org.osmdroid:osmdroid-geopackage:6.1.16") // Remove if not needed
         // Retrofit
         implementation("com.squareup.retrofit2:retrofit:2.9.0")
         implementation("com.squareup.retrofit2:converter-gson:2.9.0")
@@ -88,5 +88,7 @@ android {
         debugImplementation(libs.androidx.ui.test.manifest)
         implementation(libs.androidx.appcompat)
         implementation(libs.play.services.location)
+        // Jetpack Glance
+        implementation("androidx.glance:glance-appwidget:1.1.1")
     }
 }
