@@ -35,9 +35,6 @@
             </intent-filter>
         </activity>
 
-        <!-- If adding a new activity (like WebViewActivity), declare it here -->
-        <activity android:name=".WebViewActivity" />
-
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="AIzaSyC8Ss9VOYnbwoWkVS_OAkDYLQIEg4FBwTE" />

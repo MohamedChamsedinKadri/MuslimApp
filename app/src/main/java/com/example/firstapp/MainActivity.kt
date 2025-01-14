@@ -7,7 +7,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
@@ -48,8 +47,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
@@ -58,25 +57,27 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.content.ContextCompat
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.example.firstapp.data.network.RetrofitClient
+import com.example.firstapp.data.models.GeocodeResponse
 import com.example.firstapp.ui.quran.QuranScreen
 import com.example.firstapp.ui.theme.FirstAppTheme
+import com.example.firstapp.ui.compass.Compass
+import com.example.firstapp.ui.components.BottomNavigationBar
+import com.example.firstapp.ui.components.PolicyButton
+import com.example.firstapp.ui.components.Toolbar
+import com.example.firstapp.ui.goals.GoalsScreen
+import com.example.firstapp.ui.settings.SettingsScreen
+import com.example.firstapp.utils.LocationHelper
+import com.example.firstapp.ui.compass.CompassScreen
 import kotlinx.coroutines.launch
-import org.osmdroid.config.Configuration
-import org.osmdroid.tileprovider.tilesource.TileSourceFactory
-import org.osmdroid.util.GeoPoint
-import org.osmdroid.views.MapView
-import org.osmdroid.views.overlay.Marker
-import org.osmdroid.views.overlay.compass.CompassOverlay
-import org.osmdroid.views.overlay.compass.InternalCompassOrientationProvider
-import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider
-import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
 
 // Create a CompositionLocal to hold the dark theme state
 val LocalIsDarkTheme = staticCompositionLocalOf { mutableStateOf(false) }
@@ -86,12 +87,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        // Initialize OSMDroid configuration
-        Configuration.getInstance().load(
-            applicationContext,
-            getSharedPreferences("osm_prefs", Context.MODE_PRIVATE)
-        )
 
         locationHelper = LocationHelper(this)
         setContent {
@@ -108,11 +103,42 @@ class MainActivity : ComponentActivity() {
                         color = MaterialTheme.colorScheme.background
                     ) {
                         val navController = rememberNavController()
-                        MainScreenWithBottomNavigation(navController, locationHelper)
+                        MainScreenWithBottomNavigation(navController, locationHelper, ::getCoordinatesForCity)
                     }
                 }
             }
         }
+    }
+
+    private fun getCoordinatesForCity(city: String) {
+        val apiKey = "9bee538dcea04fbaa7e624f43b7eea07" // Replace with your API key
+        val call = RetrofitClient.openCageService.getCoordinates(city, apiKey)
+
+        call.enqueue(object : Callback<GeocodeResponse> {
+            override fun onResponse(
+                call: Call<GeocodeResponse>,
+                response: Response<GeocodeResponse>
+            ) {
+                if (response.isSuccessful) {
+                    val geocodeResponse = response.body()
+                    if (geocodeResponse != null && geocodeResponse.results.isNotEmpty()) {
+                        val latitude = geocodeResponse.results[0].geometry.lat
+                        val longitude = geocodeResponse.results[0].geometry.lng
+                        val formattedAddress = geocodeResponse.results[0].formatted
+                        println("Latitude: $latitude, Longitude: $longitude, Formatted Address: $formattedAddress")
+                        // Update UI or use coordinates
+                    } else {
+                        println("No results found for city: $city")
+                    }
+                } else {
+                    println("API call failed with code: ${response.code()}")
+                }
+            }
+
+            override fun onFailure(call: Call<GeocodeResponse>, t: Throwable) {
+                println("API call failed: ${t.message}")
+            }
+        })
     }
 }
 
@@ -120,7 +146,8 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainScreenWithBottomNavigation(
     navController: NavHostController,
-    locationHelper: LocationHelper
+    locationHelper: LocationHelper,
+    getCoordinatesForCity: (String) -> Unit
 ) {
     var currentCity by remember { mutableStateOf("Your City") }
     val coroutineScope = rememberCoroutineScope()
@@ -140,10 +167,11 @@ fun MainScreenWithBottomNavigation(
     }
 
     // Settings State
-    var isDarkThemeEnabled by remember { mutableStateOf(false) }
-    var isAutoLocationEnabled by remember { mutableStateOf(false) }
+    val isDarkThemeEnabled = remember { mutableStateOf(false) }
+    val isAutoLocationEnabled = remember { mutableStateOf(false) }
     val sharedPreferences = LocalContext.current.getSharedPreferences("settings", Context.MODE_PRIVATE)
-    isAutoLocationEnabled = sharedPreferences.getBoolean("isAutoLocationEnabled", false)
+    isAutoLocationEnabled.value = sharedPreferences.getBoolean("isAutoLocationEnabled", false)
+    isDarkThemeEnabled.value = sharedPreferences.getBoolean("isDarkThemeEnabled", false)
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -153,13 +181,14 @@ fun MainScreenWithBottomNavigation(
 
     // Update the isDarkThemeEnabled state when the CompositionLocal changes
     LaunchedEffect(isDarkTheme.value) {
-        isDarkThemeEnabled = isDarkTheme.value
+        isDarkThemeEnabled.value = isDarkTheme.value
     }
-    LaunchedEffect(isAutoLocationEnabled) {
-        if (isAutoLocationEnabled) {
+    LaunchedEffect(isAutoLocationEnabled.value) {
+        if (isAutoLocationEnabled.value) {
             val city = locationHelper.getCurrentCity()
             city?.let {
                 currentCity = it
+                getCoordinatesForCity(it) // Use the lambda here
             }
         }
     }
@@ -169,13 +198,14 @@ fun MainScreenWithBottomNavigation(
             Toolbar(
                 title = if (currentRoute == "settings") "Settings" else currentCity,
                 onTitleClick = {
-                    if (!isAutoLocationEnabled) {
+                    if (!isAutoLocationEnabled.value) {
                         navController.navigate("city_selection")
                     } else {
                         coroutineScope.launch {
                             val city = locationHelper.getCurrentCity()
                             city?.let {
                                 currentCity = it
+                                getCoordinatesForCity(it)
                             }
                         }
                     }
@@ -186,7 +216,7 @@ fun MainScreenWithBottomNavigation(
                             Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
                         }
                     } else {
-                        PolicyButton(onClick = { /* Handle policy click */ })
+                        PolicyButton()
                     }
                 },
                 actions = {
@@ -216,29 +246,13 @@ fun MainScreenWithBottomNavigation(
             composable("activity") { ActivityScreen() }
             composable("goals") { GoalsScreen() }
             composable("profile") { ProfileScreen() }
-            composable("page_1") { NewPage(pageNumber = 1) }
-            composable("page_2") { NewPage(pageNumber = 2) }
-            composable("page_3") { NewPage(pageNumber = 3) }
-            composable("page_4") { NewPage(pageNumber = 4) }
             composable("compass_page") { CompassScreen() }
             composable("quran_page") { QuranScreen() }
             composable("settings") {
-                SettingsScreen(
-                    isDarkThemeEnabled = isDarkThemeEnabled,
-                    onDarkThemeChange = {
-                        isDarkThemeEnabled = it
-                        isDarkTheme.value = it
-                    },
-                    isAutoLocationEnabled = isAutoLocationEnabled,
-                    onAutoLocationChange = {
-                        isAutoLocationEnabled = it
-                    }
-                )
+                SettingsScreen()
             }
             composable("city_selection") {
-                OpenStreetMapScreen(navController = navController) { selectedCity ->
-                    currentCity = selectedCity
-                }
+                // Removed OpenStreetMapScreen
             }
         }
     }
@@ -327,6 +341,32 @@ fun MyButton(
 }
 
 @Composable
+fun ActivityScreen() {
+    Surface(modifier = Modifier.fillMaxSize(), color = Color.White) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(text = "Activity Screen")
+        }
+    }
+}
+
+@Composable
+fun ProfileScreen() {
+    Surface(modifier = Modifier.fillMaxSize(), color = Color.White) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(text = "Profile Screen")
+        }
+    }
+}
+
+@Composable
 fun NewPage(pageNumber: Int) {
     Surface(modifier = Modifier.fillMaxSize(), color = Color.White) {
         // You can add content to your new page here
@@ -379,32 +419,6 @@ fun CompassScreen() {
                 )
             }
             Text(text = "Azimuth: $azimuth", modifier = Modifier.padding(16.dp))
-        }
-    }
-}
-
-@Composable
-fun ActivityScreen() {
-    Surface(modifier = Modifier.fillMaxSize(), color = Color.White) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(text = "Activity Screen")
-        }
-    }
-}
-
-@Composable
-fun ProfileScreen() {
-    Surface(modifier = Modifier.fillMaxSize(), color = Color.White) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(text = "Profile Screen")
         }
     }
 }

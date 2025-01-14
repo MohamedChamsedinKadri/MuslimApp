@@ -41,12 +41,10 @@ android {
         kotlinCompilerExtensionVersion = "1.5.1"
     }
     dependencies {
-        // OSMDroid for OpenStreetMap
-        implementation("org.osmdroid:osmdroid-android:6.1.16")
+        implementation("com.squareup.okhttp3:logging-interceptor:4.11.0")
+        implementation("com.squareup.okhttp3:okhttp:4.11.0")
 
-        // Optional: For additional features like markers, overlays, etc.
-        //implementation("org.osmdroid:osmdroid-mapsforge:6.1.16") // Remove if not needed
-        //implementation("org.osmdroid:osmdroid-geopackage:6.1.16") // Remove if not needed
+        implementation("com.google.dagger:hilt-android:2.51.1") // Use the latest version
         // Retrofit
         implementation("com.squareup.retrofit2:retrofit:2.9.0")
         implementation("com.squareup.retrofit2:converter-gson:2.9.0")

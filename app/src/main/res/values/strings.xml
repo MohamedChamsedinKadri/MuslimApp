@@ -1,3 +1,8 @@
 <resources>
     <string name="app_name">FirstApp</string>
+    <string name="settings_title">Settings</string>
+    <string name="dark_mode">Dark Mode</string>
+    <string name="notifications">Notifications</string>
+    <string name="goals_title">Goals</string>
+    <string name="quran_title">Quran</string>
 </resources>
